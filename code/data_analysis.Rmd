@@ -1,0 +1,55 @@
+---
+title: "data_analysis"
+author: "Sunyeop Lee"
+date: '2021 7 24 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(lme4)
+library(glmer)
+library(nnet)
+```
+
+```{r}
+# logistic regression
+model <- multinom(smokingchange ~ 1 + basicincome_binary, data=mydata)
+summary(model)
+exp(model$coefficients)
+
+model <- glm(smoking_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
+model_summary <- summary(model)
+model_summary$coefficients / model_summary$standard.errors
+model_summary$standard.errors * 2
+
+model <- glm(alcohol_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
+summary(model)
+exp(model$coefficients)
+
+
+exp(confint(model))
+```
+
+
+```{r}
+# multilevel logistic regression
+model <- glmer(smoking_increased ~ 1 + 
+                   (1 + covid_cases| area), 
+                family=binomial, data = mydata)
+
+summary(model)
+
+model <- glmer(alcohol_increased ~ 1 + 
+                   (1 | census) + (1 | area), 
+                family=binomial, data = mydata)
+
+summary(model)
+
+```
+
+
