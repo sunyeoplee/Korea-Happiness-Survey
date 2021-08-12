@@ -12,15 +12,40 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(lme4)
-library(glmer)
 library(nnet)
 ```
 
+```{r call relevant R scripts, include=F}
+source("C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\Korea-Happiness-Survey\\code\\data_preparation.R")
+```
+
 ```{r}
-# logistic regression
-model <- multinom(smokingchange ~ 1 + basicincome_binary, data=mydata)
+### logistic regression ### 
+
+# changes in the number of cigarettes smoked
+model <- glm(smoking_change_cigarettes ~ 1 + age + sex +  
+                family_type_3 + home_payment_3 + employment_5 + income_household_rev, 
+             family=gaussian(link = "identity"),
+             data=mydata)
+
 summary(model)
-exp(model$coefficients)
+
+
+ind_var_sociodemo
+
+
+model <- multinom(smoking_change_cat ~ 1 + age + sex +  
+                family_type_3 + home_payment_3 + employment_5 + income_household_rev +
+                  area,
+                data=mydata)
+exp(coef(model))
+
+z <- summary(model)$coefficients / summary(model)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+p
+
+
+
 
 model <- glm(smoking_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
 model_summary <- summary(model)
@@ -33,11 +58,32 @@ exp(model$coefficients)
 
 
 exp(confint(model))
+
+```
+socialladder=C1, home_payment=SQ107, residence_type=SQ108, # sociodemographic measures
+                edu=DQ101, edu_paternal=DQ10101, edu_maternal=DQ10102,
+                grad=DQ102, grad_paternal=DQ10201, grad_maternal=DQ10202,
+                employed=DQ2, job_type=DQ3, employment_type1=DQ6, employment_type2=DQ7, work_hour=DQ4,
+                income_individual=DQ10, income_household=DQ1001, cost_of_living=DQ11, basicincome=SQ109,
+                marital_status=SQ906, age=AGE, sex=SQ903,
+```{r}
+summary(mydata$work_hour)
+```
+
+```{r}
+# logistic regression with survey weights
+
+
 ```
 
 
 ```{r}
-# multilevel logistic regression
+# multilevel regression
+model <- lmer(smoking_change_cigarettes ~ 1 + age + sex +
+                (1 | census) + (1 | area),
+              data=mydata)
+summary(model)
+
 model <- glmer(smoking_increased ~ 1 + 
                    (1 + covid_cases| area), 
                 family=binomial, data = mydata)
@@ -51,5 +97,50 @@ model <- glmer(alcohol_increased ~ 1 +
 summary(model)
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
