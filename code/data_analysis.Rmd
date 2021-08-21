@@ -10,9 +10,20 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r, include=FALSE}
 library(lme4)
 library(nnet)
+library(broom)
+library(survey)
+library(haven)
+library(jtools)
+library(remotes)
+
+# remotes::install_github("carlganz/svrepmisc")
+# library(svrepmisc)
+
+
+options(scipen=999, digits=4)
 ```
 
 ```{r call relevant R scripts, include=F}
@@ -20,64 +31,51 @@ source("C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\Kore
 ```
 
 ```{r}
-### logistic regression ### 
-
-# changes in the number of cigarettes smoked
-model <- glm(smoking_change_cigarettes ~ 1 + age + sex +  
-                family_type_3 + home_payment_3 + employment_5 + income_household_rev, 
-             family=gaussian(link = "identity"),
-             data=mydata)
-
-summary(model)
+sociodemo_var
+social_var
+psych_var
+health_var
+```
 
 
-ind_var_sociodemo
+```{r}
+### multinomial regression ### 
 
-
-model <- multinom(smoking_change_cat ~ 1 + age + sex +  
-                family_type_3 + home_payment_3 + employment_5 + income_household_rev +
-                  area,
+model <- multinom(smoking_change_cat ~ 1 + age + sex + area + 
+                    home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
+                    online_friends + offline_friends + 
+                    happiness + life_satisfaction + 
+                    anxiety_2 + worry_2 + depression_2 + apathy_2 + loneliness_2 +
+                    physical_health_3 + chronic_disease_3,
                 data=mydata)
-exp(coef(model))
 
-z <- summary(model)$coefficients / summary(model)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2
-p
+model_sum <- summary(model)
+print(model_sum)
 
+model_tidy <- tidy(model, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy)
 
+model <- multinom(alcohol_change_cat ~ 1 + age + sex + area +
+                    home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
+                    online_friends + offline_friends + 
+                    happiness + life_satisfaction + 
+                    anxiety_2 + worry_2 + depression_2 + apathy_2 + loneliness_2 +
+                    physical_health_3 + chronic_disease_3,
+                data=mydata)
 
+model_sum <- summary(model)
+print(model_sum)
 
-model <- glm(smoking_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
-model_summary <- summary(model)
-model_summary$coefficients / model_summary$standard.errors
-model_summary$standard.errors * 2
-
-model <- glm(alcohol_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
-summary(model)
-exp(model$coefficients)
-
-
-exp(confint(model))
-
-```
-socialladder=C1, home_payment=SQ107, residence_type=SQ108, # sociodemographic measures
-                edu=DQ101, edu_paternal=DQ10101, edu_maternal=DQ10102,
-                grad=DQ102, grad_paternal=DQ10201, grad_maternal=DQ10202,
-                employed=DQ2, job_type=DQ3, employment_type1=DQ6, employment_type2=DQ7, work_hour=DQ4,
-                income_individual=DQ10, income_household=DQ1001, cost_of_living=DQ11, basicincome=SQ109,
-                marital_status=SQ906, age=AGE, sex=SQ903,
-```{r}
-summary(mydata$work_hour)
-```
-
-```{r}
-# logistic regression with survey weights
-
+model_tidy <- tidy(model, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy)
 
 ```
 
 
-```{r}
+
+
+
+```{r,eval=FALSE, include=FALSE}
 # multilevel regression
 model <- lmer(smoking_change_cigarettes ~ 1 + age + sex +
                 (1 | census) + (1 | area),
@@ -102,11 +100,45 @@ summary(model)
 
 
 
+```{r, eval=FALSE, include=FALSE}
+# scratch code
+
+# changes in the number of cigarettes smoked
+model <- glm(smoking_change_cigarettes ~ 1 + age + sex +  
+                family_type_3 + home_payment_3 + employment_5 + income_household_rev, 
+             family=gaussian(link = "identity"),
+             data=mydata)
+
+summary(model)
+
+
+
+
+# logistic regression
+model <- glm(smoking_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
+model_summary <- summary(model)
+model_summary$coefficients / model_summary$standard.errors
+model_summary$standard.errors * 2
+
+model <- glm(alcohol_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
+summary(model)
+exp(model$coefficients)
+
+
+exp(confint(model))
 
 
 
 
 
+
+
+
+
+z <- summary(model)$coefficients / summary(model)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+p
+```
 
 
 
