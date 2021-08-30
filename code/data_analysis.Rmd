@@ -19,8 +19,8 @@ library(haven)
 library(jtools)
 library(remotes)
 
-# remotes::install_github("carlganz/svrepmisc")
-# library(svrepmisc)
+remotes::install_github("carlganz/svrepmisc")
+library(svrepmisc)
 
 
 options(scipen=999, digits=4)
@@ -41,12 +41,16 @@ health_var
 ```{r}
 ### multinomial regression ### 
 
+# create a bootstrap replicate weight set
+des <- svydesign(ids=~psu, strata=~strataid, weights=~survey_weight, data=mydata, nest=FALSE)
+w <- as.svrepdesign()
+
 model <- multinom(smoking_change_cat ~ 1 + age + sex + area + 
                     home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
-                    online_friends + offline_friends + 
-                    happiness + life_satisfaction + 
-                    anxiety_2 + worry_2 + depression_2 + apathy_2 + loneliness_2 +
-                    physical_health_3 + chronic_disease_3,
+                    online_friends + offline_friends +  
+                    # happiness + 
+                    # anxiety_2 + depression_2 + apathy_2 + loneliness_2 +
+                    chronic_disease_3,
                 data=mydata)
 
 model_sum <- summary(model)
@@ -58,9 +62,9 @@ knitr::kable(model_tidy)
 model <- multinom(alcohol_change_cat ~ 1 + age + sex + area +
                     home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
                     online_friends + offline_friends + 
-                    happiness + life_satisfaction + 
-                    anxiety_2 + worry_2 + depression_2 + apathy_2 + loneliness_2 +
-                    physical_health_3 + chronic_disease_3,
+                    # happiness + 
+                    # anxiety_2 + depression_2 + apathy_2 + loneliness_2 +
+                    chronic_disease_3,
                 data=mydata)
 
 model_sum <- summary(model)
@@ -69,8 +73,14 @@ print(model_sum)
 model_tidy <- tidy(model, conf.int = TRUE, exponentiate = TRUE)
 knitr::kable(model_tidy)
 
+
+
+
 ```
 
+```{r}
+
+```
 
 
 
@@ -115,7 +125,16 @@ summary(model)
 
 
 # logistic regression
-model <- glm(smoking_increased ~ 1 + basicincome_binary, family=binomial(link='logit'), data=mydata)
+model <- glm(smoking_increased ~ 1 + age + sex + area + 
+                    home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
+                    online_friends + offline_friends +  
+                    happiness + life_satisfaction +
+                    anxiety_2 + worry_2 + depression_2 + apathy_2 + loneliness_2 +
+                    physical_health_3 + chronic_disease_3,
+             family=binomial(link='logit'), 
+             data=mydata)
+car::vif(model)
+
 model_summary <- summary(model)
 model_summary$coefficients / model_summary$standard.errors
 model_summary$standard.errors * 2

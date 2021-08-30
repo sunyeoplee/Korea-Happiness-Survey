@@ -15,6 +15,10 @@ library(gtools)
 library(tableone)
 library(survey)
 library(gmodels)
+library(faraway)
+library(caret)
+library(car)
+library(rms)
 
 
 
@@ -93,7 +97,7 @@ mydata$smoking_change_cigarettes[mydata$smoking_change_cat=='1' & !is.na(mydata$
 mydata$smoking_change_cigarettes[mydata$smoking_change_cat=='2' & !is.na(mydata$smoking_change_cat)] <- -1 * mydata$cigarettes[mydata$smoking_change_cat=='2' & !is.na(mydata$smoking_change_cat)]
 mydata$smoking_change_cigarettes[mydata$smoking_change_cat=='3' & !is.na(mydata$smoking_change_cat)] <- 0
 
-mydata$smoking_increased <- recode_factor(factor(mydata$smoking_change_cat),'2'='no', '3'="no",'1'='yes')
+mydata$smoking_increased <- recode_factor(factor(mydata$smoking_change_cat),'same'='no', 'less'="no",'more'='yes')
 mydata$smoking_decreased <- recode_factor(factor(mydata$smoking_change_cat),'2'='yes', '3'="no",'1'='no')
 
 # dependent variable: alcohol change
@@ -208,28 +212,29 @@ print(na_count <- data.frame(na_count))
 
 # check the distribution
 summary(factor(mydata$chronic_disease))
-summary(mydata$anxiety)
+summary(mydata$smoking_increased)
+unique(mydata$friends)
 
-corr_plot <- ggplot(mydata, aes(x=age, y=smoking_change_cigarettes)) + 
+corr_plot <- ggplot(mydata, aes(x=offline_friends, y=as.numeric(smoking_increased))) + 
   geom_point(color='steelblue1', alpha=1) +
   geom_smooth(method=lm, se=T, color='steelblue') + 
   scale_x_continuous(name = "X", breaks = c(0,20,40,60)) +
   scale_y_continuous(name = "Y")
 corr_plot
 
-normal_variable <- mydata$life_satisfaction
-hist(normal_variable)
+normal_variable <- mydata$friends
+hist(normal_variable, breaks=80)
 ggplot(mydata, aes(x=normal_variable)) + geom_density() # density curve
 
 CrossTable(mydata$employment_type1, mydata$employment_type2)
 
 chisq.test(mydata$smoking_increased, mydata$basicincome)
 
-dim(mydata[mydata$age<18, ])
+summary(mydata[mydata$online_friends>20, ]$age)
 
 summary(factor(mydata$employment_4))
 
-CrossTable(mydata$alcohol_change_cat, mydata$chronic_disease_3)
+CrossTable(mydata$worry_2, mydata$anxiety_2)
 
 mydata %>%
   filter(!is.na(smoking_change_cat)) %>%
@@ -237,6 +242,20 @@ mydata %>%
   dplyr::select(age)
 
 
+# check for multicollinearity
+cor(mydata[c('age','online_friends','offline_friends', 'happiness','life_satisfaction',
+             'income_household')], use='pairwise.complete.obs')
+
+
+
+# # box cox transformation
+# Box <-  boxcox(mydata$age ~ 1,            # Transform Turbidity as a single vector
+#              lambda = seq(-6,6,0.1))      # Try values -6 to 6 by 0.1
+# Cox <-  data.frame(Box$x, Box$y)          # Create a data frame with the results
+# Cox2 = Cox[with(Cox, order(-Cox$Box.y)),] # Order the new data frame by decreasing y
+# Cox2[1,]                                  # Display the lambda with the greatest log likelihood
+# lambda <-  Cox2[1, "Box.x"]               # Extract that lambda
+# mywvs6$age_box <-  (mywvs6$age ^ lambda - 1)/lambda # Transform the original data
 
 
 
