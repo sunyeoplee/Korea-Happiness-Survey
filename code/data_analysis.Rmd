@@ -18,12 +18,101 @@ library(survey)
 library(haven)
 library(jtools)
 library(remotes)
+library(brglm2)
+library(stargazer)
+library(texreg)
+library(rcompanion)
+library(effects)
+library(car)
+library(splines)
+library(grid)
+library(gridExtra)
+library(gtools)
+library(ggpubr)
 
-remotes::install_github("carlganz/svrepmisc")
-library(svrepmisc)
+# remotes::install_github("carlganz/svrepmisc")
+# library(svrepmisc)
 
 
 options(scipen=999, digits=4)
+```
+
+```{r, include=F}
+plot_effect <- function(model, predictor, main, xlab) {
+  eff <- predictorEffect(predictor, model)
+  eff[['y.levels']] <- c('more','less')
+  list <- c('prob','se.prob','lower.prob','upper.prob','logit','se.logit','lower.logit','upper.logit')
+  for (i in list) {
+    eff[[i]] <- eff[[i]][,2:3]
+  }
+  plot(eff,
+     lines=list(multiline=TRUE, col=c('red','blue')),
+     confint=list(style='band'),
+     lattice=list(key.args=list(columns=1)),
+     main=main,
+     axes=list(
+       grid=FALSE,
+       alternating=FALSE,
+       x=list(predictor=list(lab=xlab),
+              rug=FALSE),
+       y=list(style='lines')
+     ))
+}
+
+plot_effect_pub <- function(model, predictor, xlab, legend) {
+  eff <- predictorEffect(predictor, model)
+  eff[['y.levels']] <- c('increased','decreased')
+  list <- c('prob','se.prob','lower.prob','upper.prob','logit','se.logit','lower.logit','upper.logit')
+  for (i in list) {
+    eff[[i]] <- eff[[i]][,2:3]
+  }
+  trellis.device()
+  trellis.par.set(list(axis.text = list(cex=1.3)))
+  trellis.par.set(list(par.xlab.text = list(cex=1.3)))
+  effect_plot <- plot(eff,
+                      points=list(cex=1.3),
+     lines=list(multiline=TRUE, col=c('red','blue')),
+     confint=list(style='band'),
+     lattice=list(key.args=list(columns=2, cex=1.3, cex.title=1.3)),
+     main='',
+     axes=list(
+       grid=FALSE,
+       alternating=FALSE,
+       x=list(predictor=list(lab=xlab),
+              rug=FALSE),
+       y=list(lab='', style='lines')
+     ))
+  effect_plot[["legend"]][["top"]][["args"]][["key"]][["title"]] <- legend
+  return(effect_plot)
+}
+
+plot_effect_pub_interaction <- function(model, predictor, xlab, legend) {
+  eff <- predictorEffect(predictor, model)
+  eff[['y.levels']] <- c('increased','decreased')
+  list <- c('prob','se.prob','lower.prob','upper.prob','logit','se.logit','lower.logit','upper.logit')
+  for (i in list) {
+    eff[[i]] <- eff[[i]][,2:3]
+  }
+  trellis.device()
+  trellis.par.set(list(axis.text = list(cex=1.5)))
+  trellis.par.set(list(par.xlab.text = list(cex=1.5)))
+  trellis.par.set('fontsize', list(text=25))
+  effect_plot <- plot(eff,
+     lines=list(multiline=TRUE, col=c('red','blue')),
+     confint=list(style='band'),
+     lattice=list(key.args=list(columns=2, cex=1.5, cex.title=1.5)),
+     main='',
+     axes=list(
+       grid=FALSE,
+       alternating=FALSE,
+       x=list(predictor=list(lab=xlab),
+              rug=FALSE),
+       y=list(lab='', style='lines')
+     ))
+  effect_plot[["legend"]][["top"]][["args"]][["key"]][["title"]] <- legend
+  return(effect_plot)
+}
+
 ```
 
 ```{r call relevant R scripts, include=F}
@@ -31,27 +120,486 @@ source("C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\Kore
 ```
 
 ```{r}
-sociodemo_var
-social_var
-psych_var
-health_var
+# smoker vs. drinker
+CrossTable(mydata$smoker, mydata$drinker)
+chisquared <- chisq.test(mydata$smoker, mydata$drinker)
+cramerV(mydata$smoker, mydata$drinker)
+
+chisquared[['statistic']][['X-squared']]
+
+# grob1 <- grobTree(textGrob(paste("χ2 (df = ", chisquared[['parameter']][["df"]], ') = ',
+#                                  round(chisquared[['statistic']][['X-squared']],0)),
+#                                  x = 0.6, y = 0.17, hjust = 0,
+#                                  gp = gpar(col = "black", fontsize = 9, fontface = "bold")))
+
+
+bar_plot_1 <- ggplot(mydata, aes(x = factor(smoker, levels=c('smoker','non-smoker')),
+                               fill = factor(drinker, levels=c('drinker','non-drinker')))) + 
+  geom_bar() +
+  scale_fill_manual(values = c("drinker" = "#FF6666", "non-drinker" = "#3399FF")) +
+  theme(plot.title = element_blank(), panel.background = element_blank(),
+        axis.line = element_line(color="black"), 
+        axis.line.x = element_line(color="black"),
+        axis.title.y = element_blank()) +
+  labs(x = "(a)", fill = 'Drinker')
+  
+bar_plot_1
+
+# smoking change vs. drinking change
+CrossTable(mydata$smoking_change_cat, mydata$alcohol_change_cat)
+chisq.test(mydata$smoking_change_cat, mydata$alcohol_change_cat)
+
+mydata$smoking_change_cat_pub <- recode_factor(mydata$smoking_change_cat, 'same'='no change',
+                                               'more'='increased','less'='decreased')
+mydata$alcohol_change_cat_pub <- recode_factor(mydata$alcohol_change_cat, 'same'='no change',
+                                               'more'='increased','less'='decreased')
+bar_plot_2 <- ggplot(mydata[!is.na(mydata$smoking_change_cat) & !is.na(mydata$alcohol_change_cat), ],
+                   aes(x = smoking_change_cat_pub, fill = alcohol_change_cat_pub)) +
+  geom_bar() +
+  scale_fill_manual(values = c('no change' = '#99FF66', "increased" = "#FF6666", "decreased" = "#3399FF")) +
+  theme(plot.title = element_blank(), panel.background = element_blank(),
+        axis.line = element_line(color="black"), 
+        axis.line.x = element_line(color="black"),
+        axis.title.y = element_blank()) +
+  labs(x = "(b)", fill = 'Drinker')
+  
+bar_plot_2
+
+# generate a figure
+
+grid.arrange(bar_plot_1, bar_plot_2, nrow=1)
+
+g <- arrangeGrob(bar_plot_1, bar_plot_2, nrow=1, bottom = "Smoker", left = "The number of participants")
+# generates g
+ggsave(file="C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\Figure_1.tiff", g, dpi=1200, height=4, width=9, units='in') # saves g
+
+cramerV(mydata$smoking_change_cat, mydata$alcohol_change_cat)
+
 ```
 
 
-```{r}
+```{r main analyses}
 ### multinomial regression ### 
 
-# create a bootstrap replicate weight set
-des <- svydesign(ids=~psu, strata=~strataid, weights=~survey_weight, data=mydata, nest=FALSE)
-w <- as.svrepdesign()
+# smoking
 
-model <- multinom(smoking_change_cat ~ 1 + age + sex + area + 
-                    home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
-                    online_friends + offline_friends +  
-                    # happiness + 
-                    # anxiety_2 + depression_2 + apathy_2 + loneliness_2 +
+model_smoking <- multinom(smoking_change_cat ~ 1 + 
+                            ns(age, 3) + sex + 
+                            ns(income_household, 3) + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500, 
+                          data=mydata)
+
+model_sum <- summary(model_smoking)
+print(model_sum)
+
+model_tidy <- tidy(model_smoking, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+attr(terms(model_smoking), "predvars") # check the knots
+
+Anova(model_smoking)
+
+plot_effect(model=model_smoking, predictor='age',
+            main='Age', xlab='Age')
+
+plot_effect(model=model_smoking, predictor='income_household',
+            main='Household Income', xlab='Household Income (1-12)')
+
+
+effect_plot_smoking_1 <- plot_effect_pub(model=model_smoking, predictor='age', xlab='(a) Age', legend='Change in Smoking')
+effect_plot_smoking_2 <- plot_effect_pub(model=model_smoking, predictor='income_household',  xlab='(b) Household Income', legend='Change in Smoking')
+
+left=text_grob(label="The probability of change", size = 15, rot=90)
+grid.arrange(effect_plot_smoking_1, effect_plot_smoking_2, nrow=1, left=left)
+
+g <- arrangeGrob(effect_plot_smoking_1, effect_plot_smoking_2, nrow=1, left=left)
+
+ggsave(file="C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\Figure_2.tiff", g, dpi=1200, height=6, width=12, units='in') # saves g
+
+# drinking 
+
+model_drinking <- multinom(alcohol_change_cat ~ 1 +
+                            ns(age, 3) + sex + 
+                            ns(income_household, 3) + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500,
+                maxiter=500, data=mydata)
+
+model_sum <- summary(model_drinking)
+print(model_sum)
+
+model_tidy <- tidy(model_drinking, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+attr(terms(model_drinking), "predvars") # check the knots
+
+Anova(model_drinking)
+
+plot_effect(model=model_drinking, predictor='age',
+            main='Age', xlab='Age')
+
+plot_effect(model=model_drinking, predictor='income_household',
+            main='Household Income', xlab='Household Income (1-12)')
+
+effect_plot_drinking_1 <- plot_effect_pub(model=model_drinking, predictor='age', xlab='(a) Age', legend='Change in Drinking')
+effect_plot_drinking_2 <- plot_effect_pub(model=model_drinking, predictor='income_household',  xlab='(b) Household Income', legend='Change in Drinking')
+
+left=text_grob(label="The probability of change", size = 15, rot=90)
+grid.arrange(effect_plot_drinking_1, effect_plot_drinking_2, nrow=1, left=left)
+
+g <- arrangeGrob(effect_plot_drinking_1, effect_plot_drinking_2, nrow=1, left=left)
+
+ggsave(file="C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\Figure_3.tiff", g, dpi=1200, height=6, width=12, units='in') # saves g
+
+# generate a table 
+
+model_smoking_coef <- exp(texreg::extract(model_smoking)@coef)
+model_drinking_coef <- exp(texreg::extract(model_drinking)@coef)
+
+model_smoking_ci_low <- exp(c(confint(model_smoking)[,1,1], confint(model_smoking)[,1,2]))
+model_smoking_ci_up <- exp(c(confint(model_smoking)[,2,1], confint(model_smoking)[,2,2]))
+
+model_drinking_ci_low <- exp(c(confint(model_drinking)[,1,1], confint(model_drinking)[,1,2]))
+model_drinking_ci_up <- exp(c(confint(model_drinking)[,2,1], confint(model_drinking)[,2,2]))
+
+screenreg(list(model_smoking, model_drinking),
+       single.row=TRUE,
+       stars=c(0.001,0.01,0.05),
+       override.coef=list(model_smoking_coef, model_drinking_coef),
+       override.ci.low=list(model_smoking_ci_low, model_drinking_ci_low),
+       override.ci.up=list(model_smoking_ci_up, model_drinking_ci_up),
+       ci.force=TRUE,
+       ci.test=1,
+       digits=2,
+       leading.zero=TRUE,
+       include.aic=FALSE, include.bic=FALSE, 
+       include.loglik=FALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE
+       # custom.model.names=c('changes in smoking (more)', 'changes in smoking (less)',
+       #                      'changes in drinking (more)', 'changes in drinking (less)'),
+       )
+
+htmlreg(list(model_smoking, model_drinking),
+       single.row=TRUE,
+       stars=c(0.001,0.01,0.05),
+       override.coef=list(model_smoking_coef, model_drinking_coef),
+       override.ci.low=list(model_smoking_ci_low, model_drinking_ci_low),
+       override.ci.up=list(model_smoking_ci_up, model_drinking_ci_up),
+       ci.force=TRUE,
+       ci.test=1,
+       digits=2,
+       leading.zero=TRUE,
+       include.aic=FALSE, include.bic=FALSE, 
+       include.loglik=FALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE
+       # custom.model.names=c('changes in smoking (more)', 'changes in smoking (less)',
+       #                      'changes in drinking (more)', 'changes in drinking (less)'),ALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE,
+       file='C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\regression.html'
+       )
+
+
+# stargazer(model_smoking, model_drinking, title='multinomial regression results',
+#           dep.var.labels = c('changes in cigarette smoking', 'changes in alcohol consumption'),
+#           covariate.labels = c('age','sex','household income','employment status','household type',
+#                                'the number of online friends','the number of offline friends',
+#                                'chronic disease status'),
+#           type='latex',
+#           float=TRUE,
+#           no.space=TRUE,
+#           header=FALSE,
+#           single.row=TRUE,
+#           font.size='small',
+#           digits=2,
+#           ci=TRUE, ci.level=0.95,
+#           out='C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\regression.html'
+#           )
+
+
+
+
+```
+
+```{r sensitivity analyses for categorical income}
+
+model_smoking_sens_1 <- multinom(smoking_change_cat ~ 1 + 
+                            ns(age, 3) + sex + 
+                            income_household_rev + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500, 
+                          data=mydata)
+
+model_tidy <- tidy(model_smoking_sens_1, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+model_drinking_sens_1 <- multinom(alcohol_change_cat ~ 1 +
+                            ns(age, 3) + sex + 
+                            income_household_rev + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500,
+                maxiter=500, data=mydata)
+
+model_tidy <- tidy(model_drinking_sens_1, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+# generate a table
+
+model_smoking_coef <- exp(texreg::extract(model_smoking_sens_1)@coef)
+model_drinking_coef <- exp(texreg::extract(model_drinking_sens_1)@coef)
+
+model_smoking_ci_low <- exp(c(confint(model_smoking_sens_1)[,1,1],
+                              confint(model_smoking_sens_1)[,1,2]))
+model_smoking_ci_up <- exp(c(confint(model_smoking_sens_1)[,2,1],
+                             confint(model_smoking_sens_1)[,2,2]))
+
+model_drinking_ci_low <- exp(c(confint(model_drinking_sens_1)[,1,1],
+                               confint(model_drinking_sens_1)[,1,2]))
+model_drinking_ci_up <- exp(c(confint(model_drinking_sens_1)[,2,1],
+                              confint(model_drinking_sens_1)[,2,2]))
+
+
+htmlreg(list(model_smoking_sens_1, model_drinking_sens_1),
+       single.row=TRUE,
+       stars=c(0.001,0.01,0.05),
+       override.coef=list(model_smoking_coef, model_drinking_coef),
+       override.ci.low=list(model_smoking_ci_low, model_drinking_ci_low),
+       override.ci.up=list(model_smoking_ci_up, model_drinking_ci_up),
+       ci.force=TRUE,
+       ci.test=1,
+       digits=2,
+       leading.zero=TRUE,
+       include.aic=FALSE, include.bic=FALSE, 
+       include.loglik=FALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE
+       # custom.model.names=c('changes in smoking (more)', 'changes in smoking (less)',
+       #                      'changes in drinking (more)', 'changes in drinking (less)'),ALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE,
+       file='C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\sens_1.html'
+       )
+```
+
+```{r sensitivity analyses for those aged 20 or older}
+mydata_20 <- mydata[mydata$age >= 20,]
+dim(mydata_20[!is.na(mydata_20$alcohol_change_cat),])
+model_smoking_sens_2 <- multinom(smoking_change_cat ~ 1 + 
+                            ns(age, 3) + sex + 
+                            ns(income_household, 3) + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500, 
+                          data=mydata_20)
+
+model_tidy <- tidy(model_smoking_sens_2, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+model_drinking_sens_2 <- multinom(alcohol_change_cat ~ 1 +
+                            ns(age, 3) + sex + 
+                            ns(income_household, 3) + basicincome_2 +
+                            home_payment_3 + employment_4 + family_type_2_v2 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500,
+                maxiter=500, data=mydata_20)
+
+model_tidy <- tidy(model_drinking_sens_2, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+model_smoking_coef <- exp(texreg::extract(model_smoking_sens_2)@coef)
+model_drinking_coef <- exp(texreg::extract(model_drinking_sens_2)@coef)
+
+model_smoking_ci_low <- exp(c(confint(model_smoking_sens_2)[,1,1],
+                              confint(model_smoking_sens_2)[,1,2]))
+model_smoking_ci_up <- exp(c(confint(model_smoking_sens_2)[,2,1],
+                             confint(model_smoking_sens_2)[,2,2]))
+
+model_drinking_ci_low <- exp(c(confint(model_drinking_sens_2)[,1,1],
+                               confint(model_drinking_sens_2)[,1,2]))
+model_drinking_ci_up <- exp(c(confint(model_drinking_sens_2)[,2,1],
+                              confint(model_drinking_sens_2)[,2,2]))
+
+
+htmlreg(list(model_smoking_sens_2, model_drinking_sens_2),
+       single.row=TRUE,
+       stars=c(0.001,0.01,0.05),
+       override.coef=list(model_smoking_coef, model_drinking_coef),
+       override.ci.low=list(model_smoking_ci_low, model_drinking_ci_low),
+       override.ci.up=list(model_smoking_ci_up, model_drinking_ci_up),
+       ci.force=TRUE,
+       ci.test=1,
+       digits=2,
+       leading.zero=TRUE,
+       include.aic=FALSE, include.bic=FALSE, 
+       include.loglik=FALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE
+       # custom.model.names=c('changes in smoking (more)', 'changes in smoking (less)',
+       #                      'changes in drinking (more)', 'changes in drinking (less)'),ALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE,
+       file='C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\sens_2.html'
+       )
+```
+
+```{r sensitivity analyses for interactions}
+# smoking
+
+model_smoking_sens_3 <- multinom(smoking_change_cat ~ 1 + 
+                           ns(age, 3) + family_type_2_v2 + sex + 
+                            ns(income_household, 3)*employment_4 + 
+                            basicincome_2 +
+                            home_payment_3 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500, 
+                          data=mydata)
+
+model_tidy <- tidy(model_smoking_sens_3, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+Anova(model_smoking_sens_3)
+
+plot_effect(model=model_smoking_sens_3, predictor='age',
+            main='Age', xlab='Age')
+
+plot_effect(model=model_smoking_sens_3, predictor='income_household',
+            main='Household income by employment status', xlab='Household income (1-12)')
+
+# drinking
+
+model_drinking_sens_3 <- multinom(alcohol_change_cat ~ 1 +
+                           ns(age, 3) + family_type_2_v2 + sex + 
+                            ns(income_household, 3)*employment_4 + 
+                            basicincome_2 +
+                            home_payment_3 +
+                            offline_friends +
+                            chronic_disease_3 + 
+                            area,
+                          maxiter=500,
+                maxiter=500, data=mydata)
+
+model_tidy <- tidy(model_drinking_sens_3, conf.int = TRUE, exponentiate = TRUE)
+knitr::kable(model_tidy, digits=2)
+
+Anova(model_drinking_sens_3)
+
+plot_effect(model=model_drinking_sens_3, predictor='age',
+            main='Age', xlab='Age')
+
+plot_effect(model=model_drinking_sens_3, predictor='income_household',
+            main='Household income by employment status', xlab='Household income (1-12)')
+
+
+
+
+
+effect_plot_smoking_interact <- plot_effect_pub_interaction(model=model_smoking_sens_3, predictor='income_household', xlab='(a)', legend='Change in Smoking')
+
+effect_plot_smoking_interact[["condlevels"]]$Employment.Status <- effect_plot_smoking_interact[["condlevels"]]$employment_4 
+effect_plot_smoking_interact[["condlevels"]][["Employment.Status"]] <- c('Regular employee','Self-employed','Temporary worker','Unemployed')
+effect_plot_smoking_interact[["condlevels"]][["employment_4"]] <- NULL
+
+
+effect_plot_drinking_interact <- plot_effect_pub_interaction(model=model_drinking_sens_3, predictor='income_household',  xlab='(b)', legend='Change in Drinking')
+
+effect_plot_drinking_interact[["condlevels"]]$Employment.Status <- effect_plot_drinking_interact[["condlevels"]]$employment_4 
+effect_plot_drinking_interact[["condlevels"]][["Employment.Status"]] <- c('Regular employee','Self-employed','Temporary worker','Unemployed')
+effect_plot_drinking_interact[["condlevels"]][["employment_4"]] <- NULL
+
+
+left=text_grob(label="The probability of change", size = 23, rot=90)
+bottom=text_grob(label="Household Income (1-12)", size = 23)
+
+grid.arrange(effect_plot_smoking_interact, effect_plot_drinking_interact, nrow=2, left=left, bottom=bottom)
+
+g <- arrangeGrob(effect_plot_smoking_interact, effect_plot_drinking_interact, nrow=2, left=left, bottom=bottom)
+
+ggsave(file="C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\Figure_4_lowqual.tiff", g, dpi=800, height=15, width=15, units='in') # saves g
+
+# generate a table
+
+model_smoking_coef <- exp(texreg::extract(model_smoking_sens_3)@coef)
+model_drinking_coef <- exp(texreg::extract(model_drinking_sens_3)@coef)
+
+model_smoking_ci_low <- exp(c(confint(model_smoking_sens_3)[,1,1],
+                              confint(model_smoking_sens_3)[,1,2]))
+model_smoking_ci_up <- exp(c(confint(model_smoking_sens_3)[,2,1],
+                             confint(model_smoking_sens_3)[,2,2]))
+
+model_drinking_ci_low <- exp(c(confint(model_drinking_sens_3)[,1,1],
+                               confint(model_drinking_sens_3)[,1,2]))
+model_drinking_ci_up <- exp(c(confint(model_drinking_sens_3)[,2,1],
+                              confint(model_drinking_sens_3)[,2,2]))
+
+
+htmlreg(list(model_smoking_sens_3, model_drinking_sens_3),
+       single.row=TRUE,
+       stars=c(0.001,0.01,0.05),
+       override.coef=list(model_smoking_coef, model_drinking_coef),
+       override.ci.low=list(model_smoking_ci_low, model_drinking_ci_low),
+       override.ci.up=list(model_smoking_ci_up, model_drinking_ci_up),
+       ci.force=TRUE,
+       ci.test=1,
+       digits=2,
+       leading.zero=TRUE,
+       include.aic=FALSE, include.bic=FALSE, 
+       include.loglik=FALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE
+       # custom.model.names=c('changes in smoking (more)', 'changes in smoking (less)',
+       #                      'changes in drinking (more)', 'changes in drinking (less)'),ALSE, include.deviance=FALSE,include.group=FALSE,
+       # beside=TRUE,
+       file='C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\sens_3.html'
+       )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r scratch code, eval=FALSE, include=FALSE}
+# scratch code
+
+model <- brmultinom(alcohol_change_cat ~ 1 + age + sex + area + 
+
                     chronic_disease_3,
-                data=mydata)
+                    type='ML',
+                    data=mydata)
 
 model_sum <- summary(model)
 print(model_sum)
@@ -60,10 +608,8 @@ model_tidy <- tidy(model, conf.int = TRUE, exponentiate = TRUE)
 knitr::kable(model_tidy)
 
 model <- multinom(alcohol_change_cat ~ 1 + age + sex + area +
-                    home_payment_3 + family_type_2 + income_household + employment_4 + basicincome_2 +
+                    home_payment_3 + family_type_2_v2 + income_household_rev + employment_4 + basicincome_2 +
                     online_friends + offline_friends + 
-                    # happiness + 
-                    # anxiety_2 + depression_2 + apathy_2 + loneliness_2 +
                     chronic_disease_3,
                 data=mydata)
 
@@ -73,19 +619,6 @@ print(model_sum)
 model_tidy <- tidy(model, conf.int = TRUE, exponentiate = TRUE)
 knitr::kable(model_tidy)
 
-
-
-
-```
-
-```{r}
-
-```
-
-
-
-
-```{r,eval=FALSE, include=FALSE}
 # multilevel regression
 model <- lmer(smoking_change_cigarettes ~ 1 + age + sex +
                 (1 | census) + (1 | area),
@@ -103,15 +636,6 @@ model <- glmer(alcohol_increased ~ 1 +
                 family=binomial, data = mydata)
 
 summary(model)
-
-```
-
-
-
-
-
-```{r, eval=FALSE, include=FALSE}
-# scratch code
 
 # changes in the number of cigarettes smoked
 model <- glm(smoking_change_cigarettes ~ 1 + age + sex +  
@@ -158,11 +682,6 @@ z <- summary(model)$coefficients / summary(model)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) * 2
 p
 ```
-
-
-
-
-
 
 
 

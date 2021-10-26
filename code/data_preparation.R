@@ -90,7 +90,9 @@ level_var <- c("id", "census", 'strata', 'area') # specify level variables
 mydata[,level_var] <- lapply(mydata[,level_var], as.factor) # categorize level variables
 
 # dependent variable: smoking change
-mydata$smoking_change_cat <- recode_factor(mydata$smoking_change_cat, "3"='same', "2"='less', "1"='more')
+mydata$smoking_change_cat <- recode_factor(mydata$smoking_change_cat, "3"='same', "1"='more', "2"='less')
+# mydata$smoking_change_cat_2 <- mydata$smoking_change_cat 
+# mydata$smoking_change_cat_2[is.na(mydata$smoking_change_cat_2)] = 'same'
 
 mydata$smoking_change_cigarettes <- NA
 mydata$smoking_change_cigarettes[mydata$smoking_change_cat=='1' & !is.na(mydata$smoking_change_cat)] <- mydata$cigarettes[mydata$smoking_change_cat=='1' & !is.na(mydata$smoking_change_cat)]
@@ -100,6 +102,8 @@ mydata$smoking_change_cigarettes[mydata$smoking_change_cat=='3' & !is.na(mydata$
 mydata$smoking_increased <- recode_factor(factor(mydata$smoking_change_cat),'same'='no', 'less'="no",'more'='yes')
 mydata$smoking_decreased <- recode_factor(factor(mydata$smoking_change_cat),'2'='yes', '3'="no",'1'='no')
 
+mydata$smoker <- factor(ifelse(is.na(mydata$smoking_change_cat), 0, 1))
+mydata$smoker <- recode_factor(mydata$smoker, '0'='non-smoker','1'='smoker')
 # dependent variable: alcohol change
 mydata$alcohol_change_days_cat[mydata$alcohol_change_days_cat == 4] <- NA
 mydata$alcohol_change_days_cat <- recode_factor(mydata$alcohol_change_days_cat, "3"='same', "2"='less', "1"='more')
@@ -112,19 +116,14 @@ mydata$alcohol_change_cat[(mydata$alcohol_change_days_cat=='less' & mydata$alcoh
                             (mydata$alcohol_change_days_cat=='same' & mydata$alcohol_change_drinks_cat=='less') |
                             (mydata$alcohol_change_days_cat=='less' & mydata$alcohol_change_drinks_cat=='less')] <- 'less'
 mydata$alcohol_change_cat[mydata$alcohol_change_days_cat=='more' | mydata$alcohol_change_drinks_cat=='more'] <- 'more'
-mydata$alcohol_change_cat <- factor(mydata$alcohol_change_cat, levels=c('same','less','more'))
+mydata$alcohol_change_cat <- factor(mydata$alcohol_change_cat, levels=c('same','more','less'))
+# mydata$alcohol_change_cat_2 <- mydata$alcohol_change_cat
+# mydata$alcohol_change_cat_2[is.na(mydata$alcohol_change_cat_2)] = 'same'
+summary(mydata$alcohol_change_cat_2)
 
-# alcohol_days
-# alcohol_drinks   
+mydata$drinker <- factor(ifelse(is.na(mydata$alcohol_change_cat), 0, 1))
+mydata$drinker <- recode_factor(mydata$drinker, '0'='non-drinker','1'='drinker')
 
-# mydata$alcohol_increased <- recode_factor(factor(mydata$alcohol_change_days),'2'='no', '3'="no",'1'='yes')
-# mydata$alcohol_decreased <- recode_factor(factor(mydata$alcohol_change_days),'2'='yes', '3'="no",'1'='no')
-
-# cat_dep_var <- c('smoking_change_cat', 'smoking_increased', 'smoking_decreased',
-#                  'alcohol_change_days', 'alcohol_increased', 'alcohol_decreased')
-# mydata[,cat_dep_var] <- lapply(mydata[,cat_dep_var], as.factor) # categorize level variables
-# 
-# summary(factor(mydata$alcohol_change_days))
 
 # dependent variable: health change
 mydata$health_change_3 <- recode_factor(mydata$health_change, '3'='same',
@@ -141,6 +140,23 @@ mydata$family_relationship_change_3 <- recode_factor(mydata$family_relationship_
 
 change_var <- c('job_change_6', 'family_relationship_change_3')
 
+# demographic variables
+mydata$age_cat <- NA
+mydata$age_cat[mydata$age<=24] <- '24_or_less'
+mydata$age_cat[mydata$age>=25 & mydata$age<=34] <- '25_to_34'
+mydata$age_cat[mydata$age>=35 & mydata$age<=44] <- '35_to_44'
+mydata$age_cat[mydata$age>=45 & mydata$age<=54] <- '45_to_54'
+mydata$age_cat[mydata$age>=55 & mydata$age<=64] <- '55_to_64'
+mydata$age_cat[mydata$age>=65 & mydata$age<=74] <- '65_to_74'
+mydata$age_cat[mydata$age>=75] <- '75_or_more'
+mydata$age_cat <- factor(mydata$age_cat, levels=c('75_or_more','24_or_less','25_to_34','35_to_44','45_to_54',
+                                                  '55_to_64','65_to_74'))
+mydata$age_cat_tableone <- factor(mydata$age_cat, levels=c('24_or_less','25_to_34','35_to_44','45_to_54',
+                                                           '55_to_64','65_to_74','75_or_more'))
+
+
+
+
 # sociodemograhpic variables
 mydata$sex <- recode_factor(factor(mydata$sex), '2'="female", '1'='male')
 mydata$basicincome_2 <- recode_factor(factor(mydata$basicincome), '3'="no", '1'='yes', '2'='yes')
@@ -150,14 +166,43 @@ mydata$home_payment_3 <- recode_factor(factor(mydata$home_payment), '1'='own', '
 mydata$family_type_2 <- recode_factor(factor(mydata$family_type), '6'='two_parents',
                                       '1'='one_grand_alone','2'='one_grand_alone',
                                       '3'='one_grand_alone','5'='one_grand_alone') # 0 case for 4
+mydata$family_type_2_v2 <- recode_factor(factor(mydata$family_type), '6'='not_alone',
+                                      '1'='alone','2'='not_alone',
+                                      '3'='not_alone','5'='not_alone') # 0 case for 4
 
 
 
-# mydata$edu_self <- recode_factor(mydata$edu, '')
-# phd, master, college4_grad, college2, highschool_grad, highschool_
+mydata$edu_self_7 <- recode_factor(mydata$edu, '7'='college4_or_above', '6'='college4_or_above', '5'='college4_or_above',
+                                  '4'='college2', '3'='high_school','2'='middle_school',
+                                  '1'='elementary_school_or_less','0'='elementary_school_or_less',
+                                  '8'='dont_know_or_no_response')
+mydata$edu_paternal_7 <- recode_factor(mydata$edu_paternal, '7'='college4_or_above', '6'='college4_or_above', '5'='college4_or_above',
+                                       '4'='college2', '3'='high_school','2'='middle_school',
+                                       '1'='elementary_school_or_less','0'='elementary_school_or_less',
+                                       '8'='dont_know_or_no_response')
+mydata$edu_marental_7 <- recode_factor(mydata$edu_maternal, '7'='college4_or_above', '6'='college4_or_above', '5'='college4_or_above',
+                                       '4'='college2', '3'='high_school','2'='middle_school',
+                                       '1'='elementary_school_or_less','0'='elementary_school_or_less',
+                                       '8'='dont_know_or_no_response')
+mydata$edu_parental_7 <- NA
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'dont_know_or_no_response' & mydata$edu_marental_7 == 'dont_know_or_no_response'] <- 'dont_know_or_no_response'
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'elementary_school_or_less' | mydata$edu_marental_7 == 'elementary_school_or_less'] <- 'elementary_school_or_less'
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'middle_school' | mydata$edu_marental_7 == 'middle_school'] <- 'middle_school'
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'high_school' | mydata$edu_marental_7 == 'high_school'] <- 'high_school'
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'college2' | mydata$edu_marental_7 == 'college2'] <- 'college2'
+mydata$edu_parental_7[mydata$edu_paternal_7 == 'college4_or_above' | mydata$edu_marental_7 == 'college4_or_above'] <- 'college4_or_above'
+mydata$edu_parental_7 <- factor(mydata$edu_parental_7, levels = c('college4_or_above','college2','high_school','middle_school','elementary_school_or_less','dont_know_or_no_response'))
 
+summary(factor(mydata$edu))
+
+mydata$income_houshold_cat <- factor(mydata$income_household)
+mydata$income_houshold_cat <- recode_factor(mydata$income_houshold_cat, 
+                                            '1'='0', '2'='0-100', '3'='100_200', '4'='200_300',
+                                            '5'='300_400', '6'='400_500','7'='500_600',
+                                            '8'='600_700','9'='700_800','10'='800_900',
+                                            '11'='900_1000', '12'='1000_more')
 mydata$income_household_rev <- factor(factor(mydata$income_household), levels = rev(levels(factor(mydata$income_household))))
-# mydata$income_household_rev_3
+summary(mydata$income_household_rev)
 
 mydata$income_individual_rev <- factor(factor(mydata$income_individual), levels = rev(levels(factor(mydata$income_individual))))
 
@@ -172,7 +217,7 @@ mydata$employment_4 <- factor(mydata$employment_4, levels = c('regular','self_fa
 cont_var <- c('work_hour')
 mydata[,cont_var] <- lapply(mydata[,cont_var], as.numeric)
 
-sociodemo_var <- c('age','sex','basicincome_2','home_payment_3','family_type_2',
+sociodemo_var <- c('age','sex','basicincome_2','home_payment_3','family_type_2', 'edu_self_7','edu_paternal_7',
                    'income_household_rev','income_household','income_individual_rev','employment_4','work_hour')
 
 # social capital variables
@@ -203,6 +248,11 @@ mydata$physical_health_3 <- recode_factor(mydata$physical_health, '1'='best_good
 mydata$chronic_disease_3 <- recode_factor(mydata$chronic_disease, '0'='no','1'='less_6','2'='less_6','3'='more_6')
 mydata$disability_2 <- recode_factor(mydata$disability, '2'='no','1'='yes')
 
+
+mydata$covid_positive_3 <- ifelse(is.na(mydata$covid_positive), 'not_tested', mydata$covid_positive)
+mydata$covid_positive_3 <- recode_factor(mydata$covid_positive_3, '1'='yes', '2'='no')
+summary(mydata$covid_positive_3)
+
 health_var <- c('physical_health_3','chronic_disease_3','disability_2')
 
 ## check for missing values
@@ -211,8 +261,8 @@ print(na_count <- data.frame(na_count))
 
 
 # check the distribution
-summary(factor(mydata$chronic_disease))
-summary(mydata$smoking_increased)
+summary(factor(mydata$covid_positive_3))
+summary(mydata$age)
 unique(mydata$friends)
 
 corr_plot <- ggplot(mydata, aes(x=offline_friends, y=as.numeric(smoking_increased))) + 
@@ -222,15 +272,18 @@ corr_plot <- ggplot(mydata, aes(x=offline_friends, y=as.numeric(smoking_increase
   scale_y_continuous(name = "Y")
 corr_plot
 
-normal_variable <- mydata$friends
+normal_variable <- mydata$age
 hist(normal_variable, breaks=80)
 ggplot(mydata, aes(x=normal_variable)) + geom_density() # density curve
 
-CrossTable(mydata$employment_type1, mydata$employment_type2)
+CrossTable(mydata$alcohol_change_cat, mydata$age_cat)
 
 chisq.test(mydata$smoking_increased, mydata$basicincome)
 
 summary(mydata[mydata$online_friends>20, ]$age)
+hist(mydata[!is.na(mydata$alcohol_change_cat),]$age, breaks=80)
+
+dim(mydata[mydata$online_friends>20, ])
 
 summary(factor(mydata$employment_4))
 
@@ -241,10 +294,76 @@ mydata %>%
   filter(employment_4=='self_family') %>%
   dplyr::select(age)
 
+mydata %>% 
+  group_by(home_payment) %>% 
+  summarise(income = mean(income_individual))
+
 
 # check for multicollinearity
 cor(mydata[c('age','online_friends','offline_friends', 'happiness','life_satisfaction',
              'income_household')], use='pairwise.complete.obs')
+
+# table one
+
+# weighted descriptive statistics for the whole sample
+file_dir = 'C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\svytableone_whole.csv'
+tableone_all_vars <- c('age','sex','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','online_friends','chronic_disease_3',
+                       'covid_positive_3',
+                       'smoker', 'drinker',
+                       'area')
+tableone_cat_vars <- c('sex','area','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','chronic_disease_3','smoker','drinker','covid_positive_3')
+tableone_nonnormal_vars <- c('online_friends')
+mydata_svy <- svydesign(id=~1, weights=~survey_weight,data=mydata)
+svytableone <- svyCreateTableOne(data=mydata_svy, vars=tableone_all_vars, factorVars=tableone_cat_vars,
+                                 includeNA=T)
+# write.csv(print(svytableone,
+#                 catDigits=1,contDigits=2,
+#                 missing=T,test=F,nonnormal=tableone_nonnormal_vars,
+#                 showAllLevels=T,noSpaces=T),
+#           file=file_dir)
+
+# weighted descriptive statistics for smokers
+file_dir = 'C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\svytableone_smoker.csv'
+tableone_all_vars <- c('age','sex','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','online_friends','chronic_disease_3',
+                       'covid_positive_3',
+                       'smoking_change_cat',
+                       'area')
+tableone_cat_vars <- c('sex','area','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','chronic_disease_3','smoking_change_cat','covid_positive_3')
+tableone_nonnormal_vars <- c('online_friends')
+mydata_svy <- svydesign(id=~1, weights=~survey_weight,data=mydata[!is.na(mydata$smoking_change_cat),])
+svytableone <- svyCreateTableOne(data=mydata_svy, vars=tableone_all_vars, factorVars=tableone_cat_vars,
+                                 includeNA=T)
+# write.csv(print(svytableone,
+#                 catDigits=1,contDigits=2,
+#                 missing=T,test=F,nonnormal=tableone_nonnormal_vars, 
+#                 showAllLevels=T,noSpaces=T), 
+#           file=file_dir)
+# weighted descriptive statistics for drinkers
+file_dir = 'C:\\Users\\USER\\Desktop\\Backup\\Gap year\\Korea Happiness Survey\\tables\\svytableone_drinker.csv'
+tableone_all_vars <- c('age','sex','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','online_friends','chronic_disease_3',
+                       'covid_positive_3',
+                       'alcohol_change_cat',
+                       'area')
+tableone_cat_vars <- c('sex','area','income_houshold_cat','basicincome_2','home_payment_3','employment_4',
+                       'family_type_2_v2','chronic_disease_3','covid_positive_3',
+                       'alcohol_change_cat')
+tableone_nonnormal_vars <- c('online_friends')
+mydata_svy <- svydesign(id=~1, weights=~survey_weight,data=mydata[!is.na(mydata$alcohol_change_cat),])
+svytableone <- svyCreateTableOne(data=mydata_svy, vars=tableone_all_vars, factorVars=tableone_cat_vars,
+                                 includeNA=T)
+# write.csv(print(svytableone,
+#                 catDigits=1,contDigits=2,
+#                 missing=T,test=F,nonnormal=tableone_nonnormal_vars, 
+#                 showAllLevels=T,noSpaces=T), 
+#           file=file_dir)
+
+
+
 
 
 
